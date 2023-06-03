@@ -13,7 +13,13 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-dt-exec echo "This is an empty launch script. Update it to launch your application."
+echo "Running default.sh"
+roscore & # Do NOT use this when running on the duckiebot
+sleep 5
+dt-launcher-hello &
+dt-launcher-joystick &
+dt-launcher-hello-rust &
+dt-launcher-hello-cpp &
 
 
 # ----------------------------------------------------------------------------
