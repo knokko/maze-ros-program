@@ -13,9 +13,20 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-java -jar packages/joystick/hello-cl.jar &
-java -jar packages/joystick/hello-cuda.jar &
-java -jar packages/joystick/hello-vulkan.jar &
+#java -jar packages/joystick/hello-cl.jar &
+#java -jar packages/joystick/hello-cuda.jar &
+#java -jar packages/joystick/hello-vulkan.jar &
+cd /usr/local/cuda-10.2/
+ls
+cd /usr/local/cuda-10.2/bin
+ls
+echo includes
+cd /usr/local/cuda-10.2/include
+ls
+cd /usr/local/cuda-10.2/lib64
+ls
+cd /usr/local/cuda-10.2/targets
+ls
 
 
 # ----------------------------------------------------------------------------
