@@ -12,7 +12,8 @@ endif()
 project ("mapper")
 
 # Add source to this project's executable.
-add_executable (mapper "mapper.cpp" "mapper.h")
+include_directories("inc")
+add_executable (mapper "src/main.cpp" "inc/mazeMap.h" "src/mazeMap.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET mapper PROPERTY CXX_STANDARD 20)
