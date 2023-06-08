@@ -4,14 +4,26 @@
 // STL
 #ifndef _MSC_VER
     #include "ros/ros.h"
-#endif 
+#endif
 #include <iostream>
 
 // Local classes
 #include "mazeMap.h"
 
-int main()
-{
-	std::cout << "Hello CMake." << std::endl;
-	return 0;
+int main() {
+    MazeMap maze(5, 3, 1);
+    maze.printMap();
+
+    // Move
+    maze.currentPose.position += Position<double>{1.0, 1.0};
+    std::cout << "\n\n\n"
+              << std::endl;
+    maze.printMap();
+
+    // Add walls
+    (*maze.currentTile()->down) = true;
+    std::cout << "\n\n\n"
+              << std::endl;
+    maze.printMap();
+    return 0;
 }
