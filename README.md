@@ -1,16 +1,3 @@
-## How to run
-### On your own machine
-```
-dts devel build -f
-dts devel run
-```
-
-### On the duckiebot
-```
-dts devel build -H db4.local -f
-dts devel run -H db4.local
-```
-
 # Template: template-ros
 
 This template provides a boilerplate repository
