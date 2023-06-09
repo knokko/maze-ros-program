@@ -20,6 +20,8 @@ dt-launcher-hello &
 dt-launcher-joystick &
 dt-launcher-hello-rust &
 dt-launcher-hello-cpp &
+dt-launcher-camera_control &
+launchers/default.sh
 
 
 # ----------------------------------------------------------------------------
