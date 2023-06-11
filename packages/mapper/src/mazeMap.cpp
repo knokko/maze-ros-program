@@ -24,11 +24,11 @@ MazeMap::MazeMap(size_t width, size_t height, double tileSize, Position<double> 
             // First row needs to have the top walls additionally
             if(y == 0)
             {
-                // tile->up = wallMap[0][x];
+                tile->up = wallMap[0][x];
             }
             else
             {
-                // tile->up = tileMap.back()[x]->down;
+                tile->up = tileMap.back()[x]->down;
             }
 
             // The first column needs to have the left wall extra
@@ -43,7 +43,7 @@ MazeMap::MazeMap(size_t width, size_t height, double tileSize, Position<double> 
 
             // The rest of the walls are the same
             tile->right = wallMap[2 * y + 1][2 * (x + 1)];
-            // tile->down  = wallMap[2 * y + 1][2 * x];
+            tile->down  = wallMap[2 * (y + 1)][2 * x];
 
             tileRow.push_back(tile);
         }
@@ -97,11 +97,11 @@ void MazeMap::printMap() const {
                     // Print wall
                     if(wall->has_value())
                     {
-                        std::cout << (wall->value() ? "|" : ":");
+                        std::cout << (wall->value() ? "|" : " ");
                     }
                     else
                     {
-                        std::cout << " ";
+                        std::cout << ":";
                     }
                 }
             }
@@ -116,11 +116,11 @@ void MazeMap::printMap() const {
 
                 if(wall->has_value())
                 {
-                    std::cout << (wall->value() ? "-" : ".");
+                    std::cout << (wall->value() ? "-" : " ");
                 }
                 else
                 {
-                    std::cout << " ";
+                    std::cout << ".";
                 }
             }
         }

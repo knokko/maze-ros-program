@@ -16,19 +16,19 @@ int main() {
 
     // Move
     (*maze.currentTile()->left)  = true;
-    //(*maze.currentTile()->up)    = true;
+    (*maze.currentTile()->up)    = true;
     (*maze.currentTile()->right) = true;
-    //(*maze.currentTile()->down)  = true;
+    (*maze.currentTile()->down)  = true;
     maze.currentPose.position += Position<double>{1.0, 1.0};
     std::cout << "\n\n\n"
               << std::endl;
     maze.printMap();
 
     maze.currentPose.position    = Position<double>{2.0, 2.0};
-    (*maze.currentTile()->left)  = true;
-    //(*maze.currentTile()->up)    = true;
-    (*maze.currentTile()->right) = true;
-    //(*maze.currentTile()->down)  = true;
+    (*maze.currentTile()->left)  = false;
+    (*maze.currentTile()->up)    = false;
+    (*maze.currentTile()->right) = false;
+    (*maze.currentTile()->down)  = false;
     std::cout << "\n\n\n"
               << std::endl;
     maze.printMap();
