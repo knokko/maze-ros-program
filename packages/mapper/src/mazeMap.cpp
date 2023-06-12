@@ -1,4 +1,4 @@
-#include <mazeMap.h>
+#include <MazeMap.h>
 
 MazeMap::MazeMap(size_t width, size_t height, double tileSize, Position<double> initialPosition)
       : tileSize(tileSize), currentPose({initialPosition, 0}) {
