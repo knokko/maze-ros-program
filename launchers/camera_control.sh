@@ -2,6 +2,7 @@
 
 source /environment.sh
 
+source /code/catkin_ws/devel/setup.bash
 # initialize launch file
 dt-launchfile-init
 
@@ -13,8 +14,8 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-dt-exec python3 -m "camera_control.camera_control"
-
+dt-exec roslaunch --wait maze_detection maze_detection.launch veh:=$VEHICLE_NAME
+dt-exec roslaunch --wait object_detection object_detection.launch veh:=$VEHICLE_NAME
 
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE

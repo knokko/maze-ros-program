@@ -16,10 +16,9 @@ dt-launchfile-init
 echo "Running default.sh"
 roscore & # Do NOT use this when running on the duckiebot
 sleep 5
-dt-launcher-hello &
+
+# dt-exec roslaunch --wait agent agent_node.launch &
 dt-launcher-joystick &
-dt-launcher-hello-rust &
-dt-launcher-hello-cpp &
 dt-launcher-camera_control &
 launchers/default.sh
 

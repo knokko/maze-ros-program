@@ -1,1 +1,18 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
+aido-protocols-daffy
+duckietown-world-daffy
+gitpython
+pyglet==1.5.15
+
+# used to interface with the DCSS
+dt-data-api-daffy>=0.1.8
+
+# numpy (pinned version is needed due to incompatibilities with duckietown-world)
+numpy==1.20.0
+# pandas (pinned version is to avoid this: https://stackoverflowteams.com/c/duckietown/questions/2673)
+pandas==1.4.4
+
+# ipython (not needed directly but we need to pin the latest version compatible with Python3.7)
+ipython==7.34.0
+
+Pillow
