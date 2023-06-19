@@ -7,10 +7,10 @@ ARG ICON="cube"
 
 # ==================================================>
 # ==> Do not change the code below this line
-ARG ARCH=arm64v8
-ARG DISTRO=ente
+ARG ARCH
+ARG DISTRO=daffy
 ARG BASE_TAG=${DISTRO}-${ARCH}
-ARG BASE_IMAGE=dt-ros-commons
+ARG BASE_IMAGE=challenge-aido_lf-baseline-duckietown-ml
 ARG LAUNCHER=default
 
 # define base image
@@ -58,6 +58,9 @@ RUN echo PIP_INDEX_URL=${PIP_INDEX_URL}
 COPY ./dependencies-py3.* "${REPO_PATH}/"
 RUN python3 -m pip install  -r ${REPO_PATH}/dependencies-py3.txt
 
+# download YOLOv5 model (weights will be downloaded from DCSS)
+RUN git clone -b v7.0 https://github.com/ultralytics/yolov5 "/yolov5"
+
 # copy the source code
 COPY ./packages "${REPO_PATH}/packages"
 
@@ -87,6 +90,7 @@ LABEL org.duckietown.label.module.type="${REPO_NAME}" \
 # <== Do not change the code above this line
 # <==================================================
 
+ENV YOLOv5_AUTOINSTALL=false
 # jetpack environment
 ENV JETPACK_VERSION 4.4.1
 # nvidia environment
