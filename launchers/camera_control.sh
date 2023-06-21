@@ -15,7 +15,7 @@ dt-launchfile-init
 
 # launching app
 dt-exec roslaunch --wait maze_detection maze_detection.launch veh:=$VEHICLE_NAME
-dt-exec roslaunch --wait object_detection object_detection_node.launch veh:=$VEHICLE_NAME
+# dt-exec roslaunch --wait object_detection object_detection_node.launch veh:=$VEHICLE_NAME
 
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE

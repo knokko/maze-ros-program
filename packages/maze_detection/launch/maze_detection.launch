@@ -1,0 +1,13 @@
+<launch>
+  <arg name="veh"/>
+  <arg name="pkg_name" value="maze_detection"/>
+  <arg name="node_name" default="maze_detection"/>
+  <arg name="param_file_name" default="default" doc="Specify a param file"/>
+
+  <group ns="$(arg veh)">
+    <node  name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen">
+      <rosparam command="load" file="$(find maze_detection)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+    </node>
+  </group>
+
+</launch>
