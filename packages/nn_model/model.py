@@ -7,7 +7,7 @@ import torch
 
 from dt_data_api import DataClient
 DT_TOKEN = "dt1-3nT8KSoxVh4MnCcqBma2QSsn28oeucG7GdzPaqQ5fq8chR6-43dzqWFnWd8KBa1yev1g3UKnzVxZkkTbfSV2HLwJJLcKsGkiPc9tksMfhR5fiSSZQt"
-MODEL_NAME = "maze_wall_ed"
+MODEL_NAME = "maze_wall_ed_all_walls"
 
 from dt_device_utils import DeviceHardwareBrand, get_device_hardware_brand
 

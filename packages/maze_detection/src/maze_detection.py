@@ -2,6 +2,7 @@
 
 import os
 import rospy
+import yaml
 from ros import rostopic, rosgraph
 from duckietown.dtros import DTROS, NodeType, TopicType
 from std_msgs.msg import String
@@ -16,11 +17,11 @@ from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
 SKIP_FRAMES = 10
 
-class PublisherNode(DTROS):
+class MazeDetectionNode(DTROS):
 
     init = False
     def __init__(self, node_name):
-        super(PublisherNode, self).__init__(node_name=node_name, node_type=NodeType.PERCEPTION)
+        super(MazeDetectionNode, self).__init__(node_name=node_name, node_type=NodeType.PERCEPTION)
         self.pub = rospy.Publisher('camera_control', String, queue_size=10)
         self.veh = rospy.get_namespace().strip("/")
 
@@ -38,6 +39,10 @@ class PublisherNode(DTROS):
             queue_size=1,
             dt_topic_type=TopicType.DEBUG
         )
+
+        # Get calibration parameters
+        self.read_params_from_calibration_file()
+
         # Start model
         self.model = Wrapper()
         self.frame_id = 0
@@ -85,9 +90,8 @@ class PublisherNode(DTROS):
         rospy.loginfo(f"bboxes: {bboxes}")
         rospy.loginfo(f"classes: {classes}")
         rospy.loginfo(f"scores: {scores}")
-        ## Filter by classes
 
-        ## DEBUG PUB
+        ## Draw bounding boxes on image and publish
         colors = {0: (0, 255, 255), 1: (0, 165, 255), 2: (0, 250, 0)}
         names = {0: "duckie", 1: "wall", 2: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -109,8 +113,46 @@ class PublisherNode(DTROS):
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
         self.pub_image.publish(obj_det_img)
         
+        # Remove low scores
+        bboxes = bboxes[scores > 0.5]
 
+    def box_to_pose(self, box):
+        """
+        Convert bounding box to pose
+        """
+        pass
 
+    def read_params_from_calibration_file(self):
+        """
+        Reads the saved parameters from `/data/config/calibrations/camera_intrinsics/DUCKIEBOTNAME.yaml`
+        or uses the default values if the file doesn't exist. Adjsuts the ROS paramaters for the
+        node with the new values.
+        """
+        # Check file existence
+        cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
+        fname = cali_file_folder + self.veh + ".yaml"
+        # Use the default values from the config folder if a robot-specific file does not exist.
+        if not os.path.isfile(fname):
+            fname = cali_file_folder + "default.yaml"
+            self.readFile(fname)
+            self.logwarn("Camera intrinsics calibration %s not found! Using default instead." % fname)
+        else:
+            self.readFile(fname)
+
+    def readFile(self, fname):
+        with open(fname, "r") as in_file:
+            try:
+                yaml_dict = yaml.load(in_file, Loader=yaml.FullLoader)
+                # self.log(yaml_dict)
+                self.image_width = yaml_dict["image_width"]
+                self.image_height = yaml_dict["image_height"]
+                self.camera_matrix = np.array(yaml_dict["camera_matrix"]["data"]).reshape(3,3)
+                self.log(self.camera_matrix)
+            except yaml.YAMLError as exc:
+                self.logfatal("YAML syntax error. File: %s fname. Exc: %s" % (fname, exc))
+                rospy.signal_shutdown("")
+                return
+            
     def run(self):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
@@ -123,6 +165,6 @@ if __name__ == "__main__":
     print("Hello Python")
     name = rospy.get_namespace()
     print(name)
-    node = PublisherNode(node_name='camera_control')
+    node = MazeDetectionNode(node_name='camera_control')
     # node.run()
     rospy.spin()
