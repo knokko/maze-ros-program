@@ -15,7 +15,7 @@ from PIL import Image, ImageFilter
 
 from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
-SKIP_FRAMES = 10
+SKIP_FRAMES = 60
 
 class MazeDetectionNode(DTROS):
 
@@ -65,9 +65,6 @@ class MazeDetectionNode(DTROS):
         if self.frame_id != 0:
             return
         
-        rospy.logdebug("Received image in cb")
-        img = image_msg.data
-        header = image_msg.header
         # Decode compressed file
         try:
             bgr = self.bridge.compressed_imgmsg_to_cv2(image_msg)
@@ -89,8 +86,6 @@ class MazeDetectionNode(DTROS):
         ## Apply to CNN
         bboxes, classes, scores = self.model.predict(im_pil)
         rospy.loginfo(f"bboxes: {bboxes}")
-        rospy.loginfo(f"classes: {classes}")
-        rospy.loginfo(f"scores: {scores}")
 
         ## Draw bounding boxes on image and publish
         colors = {0: (0, 255, 255), 1: (0, 165, 255), 2: (0, 250, 0)}
@@ -108,37 +103,32 @@ class MazeDetectionNode(DTROS):
             # label location
             text_location = (pt1[0], min(pt2[1] + 30, IMAGE_SIZE))
             # draw label underneath the bounding box
-            rgb_clone = cv2.putText(rgb_clone, name, text_location, font, 1, color, thickness=2)
-            # draw distance above the bounding box
-            text_location = (pt1[0], max(pt1[1] - 30, 0))
-            point = self.box_to_pose(box)
-            text = f"S:{score:.2f} x:{point[0]} y:{point[1]}"
-            rgb_clone = cv2.putText(rgb_clone, text, text_location, font, 1, color, thickness=2)
+            rgb_clone = cv2.putText(rgb_clone, name, text_location, font, 0.5, color, thickness=2)
+            # draw distance in the bounding box
+            text_location = (pt1[0], pt1[1])
+            point = self.box_to_pose(box / IMAGE_SIZE)
+            self.log(f"{box = } {point = }") 
+            text = f"S:{score:.2f} x:{point[0]:.2f} y:{point[1]:.2f}"
+            rgb_clone = cv2.putText(rgb_clone, text, text_location, font, 0.5, color, thickness=2)
 
         bgr = rgb_clone[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
         self.pub_image.publish(obj_det_img)
         
         # Remove low scores
-        for box in bboxes:
-            point = self.box_to_pose(box)
-            self.log(point)
+        # for box in bboxes:
+        #     point = self.box_to_pose(box)
+        #     self.log(point)
 
     def box_to_pose(self, box):
         """
         Convert bounding box to pose
         """
-        self.log(box)
-
-        ## Get center of bounding box
-        center = np.array([(box[0] + box[2]) / 2, (box[1] + box[3]) / 2])
-        ## Get distance to center
-        dist = np.linalg.norm(center - np.array([IMAGE_SIZE / 2, IMAGE_SIZE / 2]))
-
-        self.log(dist)
-        self.log(center)
-
-        world_point = self.pixel_to_world(center)
+        # Get center of bounding box
+        center = np.array([box[0], box[1], 1])
+        # Get world point
+        world_point = self.pixel_to_world(np.array([box[0], box[1]]))
+        self.log(f"from center {center} to world {world_point}")
         return world_point
 
     def pixel_to_world(self, pixel):
@@ -146,13 +136,13 @@ class MazeDetectionNode(DTROS):
         Convert pixel to world coordinates
         """
         # Get camera and projection matrix
-        camera_matrix = self.camera_matrix
-        projection_matrix = self.projection_matrix
+        # camera_matrix = self.camera_matrix
+        # projection_matrix = self.projection_matrix
         # Remove the Z axis from the projection matrix. Assume Z = 0
-        projection_matrix_z0 = np.array([projection_matrix[:,0], projection_matrix[:,1], projection_matrix[:,3]])
-        self.log(projection_matrix_z0)
-        H = camera_matrix @ projection_matrix_z0
-        self.log(H)
+        # projection_matrix_z0 = np.array([projection_matrix[:,0], projection_matrix[:,1], projection_matrix[:,3]])
+        # self.log(projection_matrix_z0)
+        # H = camera_matrix @ projection_matrix_z0
+        camera_matrix = self.homography
         # Get pixel coordinates
         pixel = np.array([pixel[0], pixel[1], 1])
         # Get camera coordinates
@@ -168,48 +158,66 @@ class MazeDetectionNode(DTROS):
         node with the new values.
         """
         # Check file existence
-        cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
+        cali_file_folder = "/data/config/calibrations/camera_extrinsic/"
         fname = cali_file_folder + self.veh + ".yaml"
         # Use the default values from the config folder if a robot-specific file does not exist.
         if not os.path.isfile(fname):
+            self.logwarn("Camera extrinsic calibration %s not found!" % fname)
             fname = cali_file_folder + "default.yaml"
             self.readFile(fname)
-            self.logwarn("Camera intrinsics calibration %s not found! Using default instead." % fname)
+            self.logwarn("Camera extrinsic calibration %s not found! Using default instead." % fname)
         else:
             self.readFile(fname)
 
-        ## TEST
-        self.pixel_to_world(np.array([IMAGE_SIZE / 2, IMAGE_SIZE / 2]))
+        # # Check file existence
+        # cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
+        # fname = cali_file_folder + self.veh + ".yaml"
+        # # Use the default values from the config folder if a robot-specific file does not exist.
+        # if not os.path.isfile(fname):
+        #     self.logwarn("Camera intrinsics calibration %s not found!" % fname)
+        #     fname = cali_file_folder + "default.yaml"
+        #     self.readFile(fname)
+        #     self.logwarn("Camera intrinsics calibration %s not found! Using default instead." % fname)
+        # else:
+        #     self.readFile(fname)
 
+        # ## TEST
+        # self.pixel_to_world(np.array([IMAGE_SIZE / 2, IMAGE_SIZE / 2]))
+
+    # def readFile(self, fname):
+    #     with open(fname, "r") as in_file:
+    #         try:
+    #             yaml_dict = yaml.load(in_file, Loader=yaml.FullLoader)
+    #             self.image_width = yaml_dict["image_width"]
+    #             self.image_height = yaml_dict["image_height"]
+    #             self.camera_matrix = np.array(yaml_dict["camera_matrix"]["data"]).reshape(3,3)
+    #             self.projection_matrix = np.array(yaml_dict["projection_matrix"]["data"]).reshape(3,4)
+    #             # self.log(yaml_dict)
+    #             # self.log(self.camera_matrix)
+    #             # self.log(self.projection_matrix)
+
+    #         except yaml.YAMLError as exc:
+    #             self.logfatal("YAML syntax error. File: %s fname. Exc: %s" % (fname, exc))
+    #             rospy.signal_shutdown("")
+    #             return
+            
     def readFile(self, fname):
         with open(fname, "r") as in_file:
             try:
                 yaml_dict = yaml.load(in_file, Loader=yaml.FullLoader)
-                self.image_width = yaml_dict["image_width"]
-                self.image_height = yaml_dict["image_height"]
-                self.camera_matrix = np.array(yaml_dict["camera_matrix"]["data"]).reshape(3,3)
-                self.projection_matrix = np.array(yaml_dict["projection_matrix"]["data"]).reshape(3,4)
-                # self.log(yaml_dict)
-                # self.log(self.camera_matrix)
-                # self.log(self.projection_matrix)
+                self.homography = np.array(yaml_dict["homography"]).reshape(3,3)
+                self.log(yaml_dict)
+                self.log(self.homography)
 
             except yaml.YAMLError as exc:
                 self.logfatal("YAML syntax error. File: %s fname. Exc: %s" % (fname, exc))
                 rospy.signal_shutdown("")
                 return
-            
-    def run(self):
-        rate = rospy.Rate(1)
-        while not rospy.is_shutdown():
-            message = "Hello python"
-            rospy.loginfo("pub message: '%s'" % message)
-            self.pub.publish(message)
-            rate.sleep()
+
 
 if __name__ == "__main__":
     print("Hello Python")
     name = rospy.get_namespace()
     print(name)
     node = MazeDetectionNode(node_name='camera_control')
-    # node.run()
     rospy.spin()

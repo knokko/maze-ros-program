@@ -17,7 +17,7 @@ dt-launchfile-init
 # roscore & # Do NOT use this when running on the duckiebot
 # sleep 5
 
-# dt-exec roslaunch --wait agent agent_node.launch &
+dt-exec roslaunch --wait agent agent_node.launch &
 dt-launcher-joystick &
 dt-launcher-camera_control
 

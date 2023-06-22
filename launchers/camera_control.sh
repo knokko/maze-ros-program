@@ -14,7 +14,7 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-dt-exec roslaunch --wait maze_detection maze_detection.launch veh:=$VEHICLE_NAME
+dt-exec roslaunch --wait maze_detection maze_detection.launch veh:="db4"
 # dt-exec roslaunch --wait object_detection object_detection_node.launch veh:=$VEHICLE_NAME
 
 # ----------------------------------------------------------------------------
