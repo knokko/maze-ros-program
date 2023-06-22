@@ -92,6 +92,8 @@ class MazeDetectionNode(DTROS):
         names = {0: "duckie", 1: "wall", 2: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
         for clas, box, score in zip(classes, bboxes, scores):
+            if score < 0.5:
+                continue
             pt1 = np.array([int(box[0]), int(box[1])])
             pt2 = np.array([int(box[2]), int(box[3])])
             pt1 = tuple(pt1)
@@ -114,11 +116,6 @@ class MazeDetectionNode(DTROS):
         bgr = rgb_clone[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
         self.pub_image.publish(obj_det_img)
-        
-        # Remove low scores
-        # for box in bboxes:
-        #     point = self.box_to_pose(box)
-        #     self.log(point)
 
     def box_to_pose(self, box):
         """
@@ -206,8 +203,6 @@ class MazeDetectionNode(DTROS):
             try:
                 yaml_dict = yaml.load(in_file, Loader=yaml.FullLoader)
                 self.homography = np.array(yaml_dict["homography"]).reshape(3,3)
-                self.log(yaml_dict)
-                self.log(self.homography)
 
             except yaml.YAMLError as exc:
                 self.logfatal("YAML syntax error. File: %s fname. Exc: %s" % (fname, exc))
