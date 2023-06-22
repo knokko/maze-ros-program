@@ -13,9 +13,9 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-echo "Running default.sh"
-roscore & # Do NOT use this when running on the duckiebot
-sleep 5
+# echo "Running default.sh"
+# roscore & # Do NOT use this when running on the duckiebot
+# sleep 5
 
 # dt-exec roslaunch --wait agent agent_node.launch &
 dt-launcher-joystick &

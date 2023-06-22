@@ -25,7 +25,7 @@ client.on('connect', function(connection) {
         }
     });
 
-    connection.sendUTF('{"op":"subscribe","id":"subscribe:/agent/maze_detection/image/compressed:4","type":"sensor_msgs/CompressedImage","topic":"/agent/maze_detection/image/compressed","compression":"none","throttle_rate":100,"queue_length":0}');
+    connection.sendUTF('{"op":"subscribe","id":"subscribe:/db4/maze_detection/image/compressed:4","type":"sensor_msgs/CompressedImage","topic":"/db4/maze_detection/image/compressed","compression":"none","throttle_rate":100,"queue_length":0}');
 });
 
 client.connect('ws://db4.local:9001/');
