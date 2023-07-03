@@ -19,8 +19,7 @@ dt-launchfile-init
 
 # dt-exec roslaunch --wait agent agent_node.launch &
 dt-launcher-joystick &
-dt-launcher-camera_control &
-launchers/default.sh
+dt-launcher-camera_control
 
 
 # ----------------------------------------------------------------------------
