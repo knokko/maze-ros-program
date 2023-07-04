@@ -15,7 +15,12 @@ from PIL import Image, ImageFilter
 
 from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
-SKIP_FRAMES = 60
+SKIP_FRAMES = 10
+
+# Projection matrix created by the minimization of the geometric error
+R = np.array([[ 2.12875487e+03,  2.08244026e+03,  2.92247361e+02],
+       [ 8.23606975e+02,  3.36040459e+01,  4.26124183e+02],
+       [ 6.38388920e+00, -9.11630022e-02,  9.18978179e-01]])
 
 class MazeDetectionNode(DTROS):
 
@@ -71,7 +76,7 @@ class MazeDetectionNode(DTROS):
         except ValueError as e:
             rospy.logerr(f"Could not decode: {e}")
             return
-        
+        original = bgr
         ## Resize image and convert to RGB
         rgb = bgr[..., ::-1]
         rgb = cv2.resize(rgb, (IMAGE_SIZE, IMAGE_SIZE))
@@ -92,7 +97,7 @@ class MazeDetectionNode(DTROS):
         names = {0: "duckie", 1: "wall", 2: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
         for clas, box, score in zip(classes, bboxes, scores):
-            if score < 0.5:
+            if score < 0.3:
                 continue
             pt1 = np.array([int(box[0]), int(box[1])])
             pt2 = np.array([int(box[2]), int(box[3])])
@@ -108,23 +113,31 @@ class MazeDetectionNode(DTROS):
             rgb_clone = cv2.putText(rgb_clone, name, text_location, font, 0.5, color, thickness=2)
             # draw distance in the bounding box
             text_location = (pt1[0], pt1[1])
-            point = self.box_to_pose(box / IMAGE_SIZE)
+            point = self.box_to_pose(box)
             self.log(f"{box = } {point = }") 
             text = f"S:{score:.2f} x:{point[0]:.2f} y:{point[1]:.2f}"
             rgb_clone = cv2.putText(rgb_clone, text, text_location, font, 0.5, color, thickness=2)
 
+        rgb_clone = cv2.resize(rgb_clone, (640, 640))
         bgr = rgb_clone[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
-        self.pub_image.publish(obj_det_img)
+        # self.pub_image.publish(obj_det_img)
+        self.pub_image.publish(self.bridge.cv2_to_compressed_imgmsg(original))
 
     def box_to_pose(self, box):
         """
         Convert bounding box to pose
         """
-        # Get center of bounding box
-        center = np.array([box[0], box[1], 1])
+        # Get params from box
+        x_left, y_bot, x_right, y_top = box
+        width = x_right - x_left
+        height = y_top - y_bot
+        area = width * height
+        self.log(f"{width} * {height} = {area}, with {x_left}, {x_right}, {y_top}, {y_bot}")
+
+        center = np.array([x_left + width/2, y_bot + height/2]) / IMAGE_SIZE
         # Get world point
-        world_point = self.pixel_to_world(np.array([box[0], box[1]]))
+        world_point = self.pixel_to_world(center)
         self.log(f"from center {center} to world {world_point}")
         return world_point
 
@@ -132,13 +145,6 @@ class MazeDetectionNode(DTROS):
         """
         Convert pixel to world coordinates
         """
-        # Get camera and projection matrix
-        # camera_matrix = self.camera_matrix
-        # projection_matrix = self.projection_matrix
-        # Remove the Z axis from the projection matrix. Assume Z = 0
-        # projection_matrix_z0 = np.array([projection_matrix[:,0], projection_matrix[:,1], projection_matrix[:,3]])
-        # self.log(projection_matrix_z0)
-        # H = camera_matrix @ projection_matrix_z0
         camera_matrix = self.homography
         # Get pixel coordinates
         pixel = np.array([pixel[0], pixel[1], 1])
@@ -165,38 +171,6 @@ class MazeDetectionNode(DTROS):
             self.logwarn("Camera extrinsic calibration %s not found! Using default instead." % fname)
         else:
             self.readFile(fname)
-
-        # # Check file existence
-        # cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
-        # fname = cali_file_folder + self.veh + ".yaml"
-        # # Use the default values from the config folder if a robot-specific file does not exist.
-        # if not os.path.isfile(fname):
-        #     self.logwarn("Camera intrinsics calibration %s not found!" % fname)
-        #     fname = cali_file_folder + "default.yaml"
-        #     self.readFile(fname)
-        #     self.logwarn("Camera intrinsics calibration %s not found! Using default instead." % fname)
-        # else:
-        #     self.readFile(fname)
-
-        # ## TEST
-        # self.pixel_to_world(np.array([IMAGE_SIZE / 2, IMAGE_SIZE / 2]))
-
-    # def readFile(self, fname):
-    #     with open(fname, "r") as in_file:
-    #         try:
-    #             yaml_dict = yaml.load(in_file, Loader=yaml.FullLoader)
-    #             self.image_width = yaml_dict["image_width"]
-    #             self.image_height = yaml_dict["image_height"]
-    #             self.camera_matrix = np.array(yaml_dict["camera_matrix"]["data"]).reshape(3,3)
-    #             self.projection_matrix = np.array(yaml_dict["projection_matrix"]["data"]).reshape(3,4)
-    #             # self.log(yaml_dict)
-    #             # self.log(self.camera_matrix)
-    #             # self.log(self.projection_matrix)
-
-    #         except yaml.YAMLError as exc:
-    #             self.logfatal("YAML syntax error. File: %s fname. Exc: %s" % (fname, exc))
-    #             rospy.signal_shutdown("")
-    #             return
             
     def readFile(self, fname):
         with open(fname, "r") as in_file:
