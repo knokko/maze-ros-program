@@ -15,7 +15,7 @@ from PIL import Image, ImageFilter
 
 from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
-SKIP_FRAMES = 50
+SKIP_FRAMES = 25
 
 # Projection matrix created by the minimization of the geometric error
 P = np.array([[ 2.12875487e+03,  2.08244026e+03,  2.92247361e+02],
@@ -106,6 +106,7 @@ class MazeDetectionNode(DTROS):
         names = {0: "duckie", 1: "wall", 2: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
         detections = []
+        rgb_boxes = self.draw_midline(rgb_boxes)
         for clas, box, score in zip(classes, bboxes, scores):
             if score < 0.3:
                 continue
@@ -122,12 +123,18 @@ class MazeDetectionNode(DTROS):
                 rospy.loginfo("Found duckie!")
             # draw bounding box
             rgb_boxes = cv2.rectangle(rgb_boxes, pt1, pt2, color, 2)
+            # Get location, (0,0) is top right in image
+            x = (box[0] + box[2]) / 2
+            y = box[3]
+            
+            # Draw mid point via pixel
+            rgb_boxes = cv2.circle(rgb_boxes, (int(x), int(y)), 2, (0, 255, 0), thickness=2)
             # label location
             text_location = (pt1[0], min(pt2[1] + 15, IMAGE_SIZE))
             # draw label underneath the bounding box
             rgb_boxes = cv2.putText(rgb_boxes, name, text_location, font, 0.4, color, thickness=2)
             # draw distance in the bounding box
-            text_location = (max(pt1[0] - 15, 0), min(pt2[1], IMAGE_SIZE) - 15)
+            text_location = (max(pt1[0] - 15, 0), min(pt2[1], IMAGE_SIZE))
 
             point = self.box_to_pose(box)
             point = self.cartesian2polar(point)
@@ -144,15 +151,15 @@ class MazeDetectionNode(DTROS):
 
         self.publish_object_pose(detections)
 
-    def draw_midline(img):
+    def draw_midline(self, img):
         # Draw midline
         for x in np.arange(0, 2, 0.1):
             for y in np.arange(-2, 2, 0.1):
-                l = map_world2camera(x, y)
+                l = self.map_world2camera(x, y)
                 l = tuple(map(int, l))
                 img = cv2.circle(img, l, 1, (100 + int(y)*25, 100 + int(x)*25, 255), thickness=2)
         # Draw null point
-        zero = map_world2camera(0, 0)
+        zero = self.map_world2camera(0, 0)
         zero = tuple(map(int, zero))
         print(f"Null point {zero=}")
         img = cv2.circle(img, zero, 10, (255, 255, 0), thickness=2)
@@ -171,7 +178,7 @@ class MazeDetectionNode(DTROS):
         self.log(f"from center {(x, y)} to world {world_point}")
         return world_point
     
-    def map_world2camera(x, y):
+    def map_world2camera(self, x, y):
         """Map a point in the world to a pixel coordinate"""
         # print(f"In: {x=}, {y=}")
         pixel = np.array([x, y, 1])
