@@ -15,7 +15,7 @@ from PIL import Image, ImageFilter
 
 from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
-SKIP_FRAMES = 25
+SKIP_FRAMES = 5
 
 # Projection matrix created by the minimization of the geometric error
 P = np.array([[ 2.12875487e+03,  2.08244026e+03,  2.92247361e+02],
@@ -86,10 +86,10 @@ class MazeDetectionNode(DTROS):
         original = bgr
         # Resize image and convert to RGB
         rgb = bgr[..., ::-1]
-        rgb = cv2.resize(rgb, (IMAGE_SIZE, 480))
-        rgb_boxes = rgb
+        # rgb_boxes = rgb
         im_pil = Image.fromarray(rgb)
-
+        im_pil = im_pil.resize((640, 480))
+        rgb_boxes = np.array(im_pil)
         # Apply edge filter
         im_pil = im_pil.filter(ImageFilter.FIND_EDGES)
         im_pil = im_pil.filter(ImageFilter.SMOOTH)
@@ -106,7 +106,7 @@ class MazeDetectionNode(DTROS):
         names = {0: "duckie", 1: "wall", 2: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
         detections = []
-        rgb_boxes = self.draw_midline(rgb_boxes)
+        # rgb_boxes = self.draw_midline(rgb_boxes)
         for clas, box, score in zip(classes, bboxes, scores):
             if score < 0.3:
                 continue
@@ -128,7 +128,7 @@ class MazeDetectionNode(DTROS):
             y = box[3]
             
             # Draw mid point via pixel
-            rgb_boxes = cv2.circle(rgb_boxes, (int(x), int(y)), 2, (0, 255, 0), thickness=2)
+            rgb_boxes = cv2.circle(rgb_boxes, (int(x), int(y)), 2, (0, 255, 255), thickness=2)
             # label location
             text_location = (pt1[0], min(pt2[1] + 15, IMAGE_SIZE))
             # draw label underneath the bounding box
@@ -143,12 +143,10 @@ class MazeDetectionNode(DTROS):
             text = f"S:{score:.2f} r:{point[0]:.2f} rho:{degree:.2f}"
             rgb_boxes = cv2.putText(rgb_boxes, text, text_location, font, 0.3, color, thickness=2)
 
-        rgb_boxes = cv2.resize(rgb_boxes, (640, 480))
+        # Publish image
         bgr = rgb_boxes[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
         self.pub_image.publish(obj_det_img)
-        # self.pub_image.publish(self.bridge.cv2_to_compressed_imgmsg(original))
-
         self.publish_object_pose(detections)
 
     def draw_midline(self, img):
