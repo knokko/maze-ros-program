@@ -15,7 +15,7 @@ from PIL import Image, ImageFilter
 
 from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
-SKIP_FRAMES = 10
+SKIP_FRAMES = 50
 
 # Projection matrix created by the minimization of the geometric error
 P = np.array([[ 2.12875487e+03,  2.08244026e+03,  2.92247361e+02],
@@ -84,7 +84,7 @@ class MazeDetectionNode(DTROS):
             rospy.logerr(f"Could not decode: {e}")
             return
         original = bgr
-        ## Resize image and convert to RGB
+        # Resize image and convert to RGB
         rgb = bgr[..., ::-1]
         rgb = cv2.resize(rgb, (IMAGE_SIZE, 480))
         rgb_boxes = rgb
@@ -97,12 +97,15 @@ class MazeDetectionNode(DTROS):
         rgb = np.array(im_pil)
         ## Apply to CNN
         bboxes, classes, scores = self.model.predict(im_pil)
+        if not bboxes:
+            return
         rospy.loginfo(f"bboxes: {bboxes}")
 
         ## Draw bounding boxes on image and publish
         colors = {0: (0, 255, 255), 1: (0, 165, 255), 2: (0, 250, 0)}
         names = {0: "duckie", 1: "wall", 2: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
+        detections = []
         for clas, box, score in zip(classes, bboxes, scores):
             if score < 0.3:
                 continue
@@ -120,39 +123,64 @@ class MazeDetectionNode(DTROS):
             # draw bounding box
             rgb_boxes = cv2.rectangle(rgb_boxes, pt1, pt2, color, 2)
             # label location
-            text_location = (pt1[0], min(pt2[1] + 30, IMAGE_SIZE))
+            text_location = (pt1[0], min(pt2[1] + 15, IMAGE_SIZE))
             # draw label underneath the bounding box
-            rgb_boxes = cv2.putText(rgb_boxes, name, text_location, font, 0.5, color, thickness=2)
+            rgb_boxes = cv2.putText(rgb_boxes, name, text_location, font, 0.4, color, thickness=2)
             # draw distance in the bounding box
-            text_location = (pt1[0], pt1[1])
-            point = self.box_to_pose(box)
-            self.log(f"{box = } {point = }") 
-            text = f"S:{score:.2f} x:{point[0]:.2f} y:{point[1]:.2f}"
-            rgb_boxes = cv2.putText(rgb_boxes, text, text_location, font, 0.5, color, thickness=2)
+            text_location = (max(pt1[0] - 15, 0), min(pt2[1], IMAGE_SIZE) - 15)
 
-        rgb_boxes = cv2.resize(rgb_boxes, (640, 640))
+            point = self.box_to_pose(box)
+            point = self.cartesian2polar(point)
+            detections += [(point, name)]
+            degree = point[1] * 180 / np.pi
+            text = f"S:{score:.2f} r:{point[0]:.2f} rho:{degree:.2f}"
+            rgb_boxes = cv2.putText(rgb_boxes, text, text_location, font, 0.3, color, thickness=2)
+
+        rgb_boxes = cv2.resize(rgb_boxes, (640, 480))
         bgr = rgb_boxes[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
-        # self.pub_image.publish(obj_det_img)
-        self.pub_image.publish(self.bridge.cv2_to_compressed_imgmsg(original))
+        self.pub_image.publish(obj_det_img)
+        # self.pub_image.publish(self.bridge.cv2_to_compressed_imgmsg(original))
 
+        self.publish_object_pose(detections)
+
+    def draw_midline(img):
+        # Draw midline
+        for x in np.arange(0, 2, 0.1):
+            for y in np.arange(-2, 2, 0.1):
+                l = map_world2camera(x, y)
+                l = tuple(map(int, l))
+                img = cv2.circle(img, l, 1, (100 + int(y)*25, 100 + int(x)*25, 255), thickness=2)
+        # Draw null point
+        zero = map_world2camera(0, 0)
+        zero = tuple(map(int, zero))
+        print(f"Null point {zero=}")
+        img = cv2.circle(img, zero, 10, (255, 255, 0), thickness=2)
+        return img
 
     def box_to_pose(self, box):
         """
         Convert bounding box to pose
         """
-        # Get params from box
-        x_left, y_bot, x_right, y_top = box
-                # Find bottom center of bounding box
+        # Find bottom center of bounding box
         x = (box[0] + box[2]) / 2
         y = box[3]
 
         # Get world point
-        world_point = self.pixel2world((x, y))
+        world_point = self.pixel2world(x, y)
         self.log(f"from center {(x, y)} to world {world_point}")
         return world_point
+    
+    def map_world2camera(x, y):
+        """Map a point in the world to a pixel coordinate"""
+        # print(f"In: {x=}, {y=}")
+        pixel = np.array([x, y, 1])
+        point =  np.dot(P, pixel)
+        x, y = point[0] / point[2], point[1] / point[2]
+        # print(f"Out: {x=}, {y=}")
+        return x, y
 
-    def pixel2world(self, pixel):
+    def pixel2world(self, x, y):
         """
         Convert pixel to world coordinates
         """
@@ -161,18 +189,22 @@ class MazeDetectionNode(DTROS):
         x, y = plane_point[0] / plane_point[2], plane_point[1] / plane_point[2]
         return (x, y)
     
-    def publish_object_pose(self, point, name):
+    def publish_object_pose(self, detections):
         """ Publishes the pose of the detected object """
-        point = self.cartesian2polar(point)
         msg = String()
-        msg.data = f"{name},{point[0]},{point[1]}"
+        for d in detections:
+            point, name = d
+            msg.data += f"{name},{point[0]},{point[1]},"
+        msg.data = msg.data[:-1]
         self.pub_pose.publish(msg)
+        self.log(f"Published {msg.data}")
 
     def cartesian2polar(self, coords):
         """ Transform cartesian to polar coordinates """
         x, y = coords
         rho = np.sqrt(x**2 + y**2)
         phi = np.arctan2(y, x)
+        self.log(f"from cartesian {coords} to polar {rho, phi} or {rho, phi * 180 / np.pi}")
         return (rho, phi)
 
     def read_params_from_calibration_file(self):
@@ -206,8 +238,8 @@ class MazeDetectionNode(DTROS):
 
 
 if __name__ == "__main__":
-    print("Hello Python")
-    name = rospy.get_namespace()
-    print(name)
+    # print("Hello Python")
+    # name = rospy.get_namespace()
+    # print(name)
     node = MazeDetectionNode(node_name='camera_control')
     rospy.spin()
