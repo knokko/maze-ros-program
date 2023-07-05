@@ -1,4 +1,2 @@
 # LIST YOUR APT PACKAGES HERE
 openjdk-17-jre
-rustc
-cargo
