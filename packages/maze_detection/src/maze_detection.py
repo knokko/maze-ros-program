@@ -15,7 +15,7 @@ from PIL import Image, ImageFilter
 
 from nn_model.constants import IMAGE_SIZE
 from nn_model.model import Wrapper
-SKIP_FRAMES = 5
+SKIP_FRAMES = 10
 
 # Projection matrix created by the minimization of the geometric error
 P = np.array([[ 2.12875487e+03,  2.08244026e+03,  2.92247361e+02],
@@ -86,27 +86,23 @@ class MazeDetectionNode(DTROS):
         original = bgr
         # Resize image and convert to RGB
         rgb = bgr[..., ::-1]
-        # rgb_boxes = rgb
-        im_pil = Image.fromarray(rgb)
-        im_pil = im_pil.resize((640, 480))
-        rgb_boxes = np.array(im_pil)
-        # Apply edge filter
-        im_pil = im_pil.filter(ImageFilter.FIND_EDGES)
-        im_pil = im_pil.filter(ImageFilter.SMOOTH)
-
-        rgb = np.array(im_pil)
+        # # rgb = rgb
+        # im_pil = Image.fromarray(rgb)
+        # im_pil = im_pil.resize((IMAGE_SIZE, IMAGE_SIZE))
+        # rgb = np.array(im_pil)
+        # # Apply edge filter
         ## Apply to CNN
-        bboxes, classes, scores = self.model.predict(im_pil)
+        bboxes, classes, scores = self.model.predict(rgb)
+
         if not bboxes:
             return
-        rospy.loginfo(f"bboxes: {bboxes}")
+        # rospy.loginfo(f"bboxes: {bboxes}")
 
         ## Draw bounding boxes on image and publish
-        colors = {0: (0, 255, 255), 1: (0, 165, 255), 2: (0, 250, 0)}
-        names = {0: "duckie", 1: "wall", 2: "wall_back"}
+        colors = {0: (0, 255, 255), 1: (0, 165, 255), 2: (0, 250, 0), 3: (0, 0, 255)}
+        names = {0:"Tim", 1: "duckie", 2: "wall", 3: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
         detections = []
-        # rgb_boxes = self.draw_midline(rgb_boxes)
         for clas, box, score in zip(classes, bboxes, scores):
             if score < 0.3:
                 continue
@@ -122,17 +118,17 @@ class MazeDetectionNode(DTROS):
             if name == "duckie":
                 rospy.loginfo("Found duckie!")
             # draw bounding box
-            rgb_boxes = cv2.rectangle(rgb_boxes, pt1, pt2, color, 2)
+            rgb = cv2.rectangle(rgb, pt1, pt2, color, 2)
             # Get location, (0,0) is top right in image
             x = (box[0] + box[2]) / 2
             y = box[3]
             
             # Draw mid point via pixel
-            rgb_boxes = cv2.circle(rgb_boxes, (int(x), int(y)), 2, (0, 255, 255), thickness=2)
+            rgb = cv2.circle(rgb, (int(x), int(y)), 2, (0, 255, 255), thickness=2)
             # label location
             text_location = (pt1[0], min(pt2[1] + 15, IMAGE_SIZE))
             # draw label underneath the bounding box
-            rgb_boxes = cv2.putText(rgb_boxes, name, text_location, font, 0.4, color, thickness=2)
+            rgb = cv2.putText(rgb, name, text_location, font, 0.4, color, thickness=2)
             # draw distance in the bounding box
             text_location = (max(pt1[0] - 15, 0), min(pt2[1], IMAGE_SIZE))
 
@@ -141,10 +137,11 @@ class MazeDetectionNode(DTROS):
             detections += [(point, name)]
             degree = point[1] * 180 / np.pi
             text = f"S:{score:.2f} r:{point[0]:.2f} rho:{degree:.2f}"
-            rgb_boxes = cv2.putText(rgb_boxes, text, text_location, font, 0.3, color, thickness=2)
+            rgb = cv2.putText(rgb, text, text_location, font, 0.3, color, thickness=2)
 
         # Publish image
-        bgr = rgb_boxes[..., ::-1]
+        cv2.resize(rgb, (640, IMAGE_SIZE))
+        bgr = rgb[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
         self.pub_image.publish(obj_det_img)
         self.publish_object_pose(detections)
@@ -173,7 +170,7 @@ class MazeDetectionNode(DTROS):
 
         # Get world point
         world_point = self.pixel2world(x, y)
-        self.log(f"from center {(x, y)} to world {world_point}")
+        # self.log(f"from center {(x, y)} to world {world_point}")
         return world_point
     
     def map_world2camera(self, x, y):
@@ -209,7 +206,7 @@ class MazeDetectionNode(DTROS):
         x, y = coords
         rho = np.sqrt(x**2 + y**2)
         phi = np.arctan2(y, x)
-        self.log(f"from cartesian {coords} to polar {rho, phi} or {rho, phi * 180 / np.pi}")
+        # self.log(f"from cartesian {coords} to polar {rho, phi} or {rho, phi * 180 / np.pi}")
         return (rho, phi)
 
     def read_params_from_calibration_file(self):
