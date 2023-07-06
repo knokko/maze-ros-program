@@ -83,19 +83,18 @@ class MazeDetectionNode(DTROS):
         except ValueError as e:
             rospy.logerr(f"Could not decode: {e}")
             return
-        original = bgr
+        # original = bgr
         # Resize image and convert to RGB
         rgb = bgr[..., ::-1]
         # # rgb = rgb
-        # im_pil = Image.fromarray(rgb)
-        # im_pil = im_pil.resize((IMAGE_SIZE, IMAGE_SIZE))
-        # rgb = np.array(im_pil)
-        # # Apply edge filter
-        ## Apply to CNN
+        im_pil = Image.fromarray(rgb)
+        im_pil = im_pil.resize((IMAGE_SIZE, IMAGE_SIZE))
+        rgb = np.array(im_pil)
+        # Apply to CNN
         bboxes, classes, scores = self.model.predict(rgb)
 
-        if not bboxes:
-            return
+        # if not bboxes:
+        #     return
         # rospy.loginfo(f"bboxes: {bboxes}")
 
         ## Draw bounding boxes on image and publish
@@ -140,7 +139,7 @@ class MazeDetectionNode(DTROS):
             rgb = cv2.putText(rgb, text, text_location, font, 0.3, color, thickness=2)
 
         # Publish image
-        cv2.resize(rgb, (640, IMAGE_SIZE))
+        rgb = cv2.resize(rgb, (640, 480))
         bgr = rgb[..., ::-1]
         obj_det_img = self.bridge.cv2_to_compressed_imgmsg(bgr)
         self.pub_image.publish(obj_det_img)
@@ -168,6 +167,9 @@ class MazeDetectionNode(DTROS):
         x = (box[0] + box[2]) / 2
         y = box[3]
 
+        # Resize
+        x = x / IMAGE_SIZE * 640
+        y = y / IMAGE_SIZE * 480
         # Get world point
         world_point = self.pixel2world(x, y)
         # self.log(f"from center {(x, y)} to world {world_point}")

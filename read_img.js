@@ -22,11 +22,11 @@ client.on('connect', function(connection) {
             const response = JSON.parse(message.utf8Data).msg.data;
             const binaryFrame = Buffer.from(response, 'base64');
             // ' + counter++ + '
-            fs.writeFile('frames/frame.jpg', binaryFrame, error => error && console.log('error writing file:', error));
+            fs.writeFile('frames/frame ' + counter++ + '.jpg', binaryFrame, error => error && console.log('error writing file:', error));
         }
     });
-    // connection.sendUTF('{"op":"subscribe","id":"subscribe:/db4/camera_node/image/compressed:4","type":"sensor_msgs/CompressedImage","topic":"/db4/camera_node/image/compressed","compression":"none","throttle_rate":100,"queue_length":0}');
-    connection.sendUTF('{"op":"subscribe","id":"subscribe:/db4/maze_detection/image/compressed:4","type":"sensor_msgs/CompressedImage","topic":"/db4/maze_detection/image/compressed","compression":"none","throttle_rate":100,"queue_length":0}');
+    connection.sendUTF('{"op":"subscribe","id":"subscribe:/db4/camera_node/image/compressed:4","type":"sensor_msgs/CompressedImage","topic":"/db4/camera_node/image/compressed","compression":"none","throttle_rate":100,"queue_length":0}');
+    // connection.sendUTF('{"op":"subscribe","id":"subscribe:/db4/maze_detection/image/compressed:4","type":"sensor_msgs/CompressedImage","topic":"/db4/maze_detection/image/compressed","compression":"none","throttle_rate":100,"queue_length":0}');
 });
 
 client.connect('ws://db4.local:9001/');
