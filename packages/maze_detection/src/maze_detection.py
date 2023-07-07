@@ -98,8 +98,8 @@ class MazeDetectionNode(DTROS):
         # rospy.loginfo(f"bboxes: {bboxes}")
 
         ## Draw bounding boxes on image and publish
-        colors = {0: (0, 255, 255), 1: (0, 165, 255), 2: (0, 250, 0), 3: (0, 0, 255)}
-        names = {0:"Tim", 1: "duckie", 2: "wall", 3: "wall_back"}
+        colors = {0: (255, 255, 0), 1: (0, 0, 255), 2: (255, 255, 0), 3: (255, 0, 0), 4: (255, 0, 255)}
+        names = {0:"Joep", 1:"Tim", 2: "duckie", 3: "wall", 4: "wall_back"}
         font = cv2.FONT_HERSHEY_SIMPLEX
         detections = []
         for clas, box, score in zip(classes, bboxes, scores):
